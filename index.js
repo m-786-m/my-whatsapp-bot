@@ -23,7 +23,7 @@ async function startBot() {
 
   if (!sock.authState.creds.registered) {
     setTimeout(async () => {
-      const phoneNumber = "923177933804"; // apna number yahan change karo
+      const phoneNumber = "923268729980"; // apna number yahan change karo
       const code = await sock.requestPairingCode(phoneNumber);
       console.log("Tumhara pairing code hai:", code);
     }, 3000);
