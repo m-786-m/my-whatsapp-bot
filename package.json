@@ -1,14 +1,13 @@
 {
-  "name": "whatsapp-bot",
+  "name": "my-whatsapp-bot",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "^6.7.0",
-    "pino": "^9.0.0",
-    "axios": "^1.6.0",
-    "yt-search": "^2.3.0"
+    "@whiskeysockets/baileys": "^6.6.0",
+    "express": "^4.19.2",
+    "pino": "^8.20.0"
   }
 }
