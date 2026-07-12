@@ -11,6 +11,8 @@ let autoReactOn = true;
 const activeRequests = new Map();
 const reactionEmojis = ['😀', '😂', '😎', '🔥', '✨', '🚀', '🤖', '🎧', '📽️', '👍', '👌', '🎉', '🎶'];
 
+let pairingRequested = false;
+
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState("auth_info");
 
@@ -21,11 +23,13 @@ async function startBot() {
     browser: ["Ubuntu", "Chrome", "20.0.04"],
   });
 
-  if (!sock.authState.creds.registered) {
+  if (!sock.authState.creds.registered && !pairingRequested) {
+    pairingRequested = true;
     setTimeout(async () => {
       const phoneNumber = "923268729980";
       const code = await sock.requestPairingCode(phoneNumber);
       console.log("Tumhara pairing code hai:", code);
+      console.log("Ye code 15 second ke andar WhatsApp me enter karo.");
     }, 3000);
   }
 
@@ -34,7 +38,16 @@ async function startBot() {
     if (connection === "close") {
       const shouldReconnect =
         lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-      if (shouldReconnect) startBot();
+
+      if (shouldReconnect) {
+        if (!sock.authState.creds.registered) {
+          console.log("Code expire ho gaya, 15 second baad naya code aayega...");
+          pairingRequested = false;
+          setTimeout(() => startBot(), 15000);
+        } else {
+          startBot();
+        }
+      }
     } else if (connection === "open") {
       console.log("Bot connected hogaya!");
     }
