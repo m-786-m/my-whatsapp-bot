@@ -1,65 +1,52 @@
-const { 
-  default: makeWASocket, 
-  useMultiFileAuthState, 
-  DisconnectReason,
-  downloadMediaMessage
-} = require("@whiskeysockets/baileys");
-const pino = require("pino");
-const axios = require("axios");
-const yts = require("yt-search");
+const express = require('express');
+const fs = require('fs');
+const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+const pino = require('pino');
 
-let autoReactOn = true;
-const activeRequests = new Map();
-const reactionEmojis = ['😀', '😂', '😎', '🔥', '✨', '🚀', '🤖', '🎧', '📽️', '👍', '👌', '🎉', '🎶'];
+const app = express();
+app.use(express.urlencoded({ extended: true }));
+const PORT = process.env.PORT || 10000;
 
-async function startBot() {
-  const { state, saveCreds } = await useMultiFileAuthState("auth_info");
+app.get('/', (req, res) => {
+    res.send(`
+        <html>
+        <body style="text-align: center; font-family: sans-serif; padding-top: 50px;">
+            <h2>M-Bot Web Pairing</h2>
+            <form action="/pair" method="POST">
+                <input type="text" name="phone" placeholder="Apna Number (e.g. 923xxxxxxxxx)" required style="padding: 10px; width: 300px;"><br><br>
+                <button type="submit" style="padding: 10px 20px; background: green; color: white; border: none;">Get Pairing Code</button>
+            </form>
+        </body>
+        </html>
+    `);
+});
 
-  const sock = makeWASocket({
-    auth: state,
-    logger: pino({ level: "silent" }),
-    printQRInTerminal: false,
-    browser: ["Ubuntu", "Chrome", "20.0.04"]
-  });
-
-  if (!sock.authState.creds.registered) {
-    setTimeout(async () => {
-      const phoneNumber = "923177933804";
-      const code = await sock.requestPairingCode(phoneNumber);
-      console.log("Tumhara pairing code hai:", code);
-    }, 3000);
-  }
-
-  sock.ev.on("connection.update", (update) => {
-    const { connection, lastDisconnect } = update;
-    if (connection === "close") {
-      const shouldReconnect =
-        lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-      if (shouldReconnect) startBot();
-    } else if (connection === "open") {
-      console.log("Bot connected hogaya!");
+app.post('/pair', async (req, res) => {
+    const phoneNumber = req.body.phone.replace(/[^0-9]/g, '');
+    
+    // Purana session delete karein taake naya number lag sake
+    if (fs.existsSync('./auth_info')) {
+        fs.rmSync('./auth_info', { recursive: true, force: true });
     }
-  });
 
-  sock.ev.on("creds.update", saveCreds);
+    const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
+    const sock = makeWASocket({
+        auth: state,
+        logger: pino({ level: "silent" }),
+        browser: ["Chrome (Linux)", "", ""]
+    });
 
-  const emojiFindRegex = /\p{Extended_Pictographic}/gu;
+    sock.ev.on('creds.update', saveCreds);
 
-  sock.ev.on("messages.upsert", async (m) => {
     try {
-      const msg = m.messages[0];
-      if (!msg.message) return;
+        let code = await sock.requestPairingCode(phoneNumber);
+        res.send(`<h2 style="text-align:center;">Pairing Code: ${code}</h2><p>WhatsApp mein ja kar Link Device mein ye code daal dein.</p>`);
+    } catch (err) {
+        res.send("Error: " + err.message);
+    }
+});
 
-      const isOwner = msg.key.fromMe;
-      const remoteJid = msg.key.remoteJid;
-      const text =
-        msg.message.conversation ||
-        msg.message.extendedTextMessage?.text ||
-        "";
-
-      const trimmed = text.trim();
-
-      // === 1. REPLY HANDLER (FOR 1 or 2) ===
+app.listen(PORT, () => console.log("Server chal raha hai..."));
       const quotedMsgId = msg.message.extendedTextMessage?.contextInfo?.stanzaId;
       if (quotedMsgId && activeRequests.has(quotedMsgId)) {
         const req = activeRequests.get(quotedMsgId);
