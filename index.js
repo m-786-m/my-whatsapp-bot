@@ -26,11 +26,16 @@ async function startBot() {
   if (!sock.authState.creds.registered && !pairingRequested) {
     pairingRequested = true;
     setTimeout(async () => {
-      const phoneNumber = "923268729980";
-      const code = await sock.requestPairingCode(phoneNumber);
-      console.log("Tumhara pairing code hai:", code);
-      console.log("Ye code 15 second ke andar WhatsApp me enter karo.");
-    }, 3000);
+      try {
+        const phoneNumber = "923268729980";
+        const code = await sock.requestPairingCode(phoneNumber);
+        console.log("Tumhara pairing code hai:", code);
+        console.log("Ye code 15 second ke andar WhatsApp me enter karo.");
+      } catch (err) {
+        console.log("Pairing code request fail hui:", err.message);
+        pairingRequested = false;
+      }
+    }, 5000);
   }
 
   sock.ev.on("connection.update", (update) => {
